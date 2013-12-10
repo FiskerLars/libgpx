@@ -3,21 +3,71 @@
 
 #include <expat.h> 
 #include <stdio.h>
+#include <time.h>
 
 #define TRKPT void*
 
 
+/* 
+<...
+lat="latitudeType [1] ?"
+lon="longitudeType [1] ?">
+<ele> xsd:decimal </ele> [0..1] ?
+<time> xsd:dateTime </time> [0..1] ?
+<magvar> degreesType </magvar> [0..1] ?
+<geoidheight> xsd:decimal </geoidheight> [0..1] ?
+<name> xsd:string </name> [0..1] ?
+<cmt> xsd:string </cmt> [0..1] ?
+<desc> xsd:string </desc> [0..1] ?
+<src> xsd:string </src> [0..1] ?
+<link> linkType </link> [0..*] ?
+<sym> xsd:string </sym> [0..1] ?
+<type> xsd:string </type> [0..1] ?
+<fix> fixType </fix> [0..1] ?
+<sat> xsd:nonNegativeInteger </sat> [0..1] ?
+<hdop> xsd:decimal </hdop> [0..1] ?
+<vdop> xsd:decimal </vdop> [0..1] ?
+<pdop> xsd:decimal </pdop> [0..1] ?
+<ageofdgpsdata> xsd:decimal </ageofdgpsdata> [0..1] ?
+<dgpsid> dgpsStationType </dgpsid> [0..1] ?
+<extensions> extensionsType </extensions> [0..1] ?
+</...>
+*/
 
-typedef struct GEOPoint {
-      double x;
-      double y;
-      double z;
-} GEOPoint;
+typedef GPXextension {
+      wchar_t *key;
+      wchar_t *value;
+}
+
+typedef struct GPXPoint {
+      double lat;
+      double lon;
+      /** using pointer for optional elements */
+      double *ele;
+      time_t *time;
+      double *magvar;
+      double *geoidheight;
+      wchar_t* name; 
+      wchar_t* cmt; 
+      wchar_t* desc; 
+      wchar_t* src; 
+      wchar_t* link; 
+      wchar_t* sym; 
+      wchar_t* type; 
+      // fix
+      uint *sat;
+      double *hdop;
+      double *vdop;
+      double *pdop;
+      double *ageofgpsdata;
+      //dgpsid;
+      struct GPXextension **extensions; // zero terminated list
+} GPXPoint;
 
 
 struct GSet {
-      struct GEOPoint** pts; //zero-terminated for easy iteration
-      struct GEOPoint* top;
+      struct GPXPoint** pts; //zero-terminated for easy iteration
+      struct GPXPoint* top;
       unsigned int n;
       unsigned int n_alloc;
 };

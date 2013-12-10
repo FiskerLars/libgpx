@@ -1,0 +1,6 @@
+A library to write and read gpx streams into different structures. I
+don't like it, that almost everybody recodes this stuff or uses
+gpxbabels source.
+
+Current status is that two implementations for either reading and
+writing have to be consolidated. 

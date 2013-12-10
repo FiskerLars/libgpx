@@ -295,7 +295,7 @@ void close_gpx_file(struct gpx_input* input) {
 
 struct GSet* gs_new_set(){
       struct GSet* set = malloc(sizeof(struct GSet));
-      set->pts = malloc(sizeof(struct GEOPoint*));
+      set->pts = malloc(sizeof(struct GPXPoint*));
       set->pts[0] = 0;
       set->top = 0;
       set->n = 0;
@@ -303,11 +303,11 @@ struct GSet* gs_new_set(){
 }
 
 
-struct GSet* gs_push_new_elem(struct GSet* set,  struct GEOPoint* v) {
+struct GSet* gs_push_new_elem(struct GSet* set,  struct GPXPoint* v) {
       if(set->n >= set->n_alloc) {
 	    // alloc new chunk
 	    int chunk = 20;
-	    struct GEOPoint** tmp = realloc(set->pts, sizeof(GEOPoint*) * (set->n_alloc + 1 + chunk));
+	    struct GPXPoint** tmp = realloc(set->pts, sizeof(GEOPoint*) * (set->n_alloc + 1 + chunk));
 	    if(!tmp) {
 		  perror("failed to allocate memory");
 		  exit(1);
@@ -321,25 +321,44 @@ struct GSet* gs_push_new_elem(struct GSet* set,  struct GEOPoint* v) {
       set->pts[set->n] = 0;
 }
 
-GEOPoint* new_point(struct GSet* ptset){ 	    
-      GEOPoint* v = (GEOPoint*)malloc(sizeof(GEOPoint));
-      v->x = v->y = v->z = 0;
+GPXPoint* new_point(struct GSet* ptset){ 	    
+      GPXPoint* v = (GPXPoint*)malloc(sizeof(GPXPoint));
+      char init[sizeof(GPXPoint)/sizeof(char)] = {0};
+      *v = (GPXPoint)init;
+      // v->lat = v->lon = v->ele = 0;
       // TODO gs_push_new_elem(ptset,  v);
       //      dbg_print_gset(ptset);
       return v;
 }
 
-void parse_lon(GEOPoint* v, const char* str) {
-      v->x = atof(str);
+double parse_xsd_decimal(double* val, const char* str) {
+      *val = atof(str);
 }
-void parse_lat(GEOPoint* v, const char* str) {
-      v->y = atof(str);
+
+wchat_t* parse_xsd_string(wchar_t** val, const char* str) {
+      // todo
 }
-void parse_ele(GEOPoint* v, const char* str) {
-      v->z = atof(str);
+
+time_t parse_xsd_datetime(time_t* val, const char*str) {
+      //todo
 }
-void parse_time(GEOPoint* v, const char* str) {
+
+
+void parse_lon(GPXPoint* v, const char* str) {
+      parse_xsd_decimal(&(v->lon), str);
 }
+void parse_lat(GPXPoint* v, const char* str) {
+      parse_xsd_decimal(&(v->lat), str);
+}
+void parse_ele(GPXPoint* v, const char* str) {
+      parse_xsd_decimal(&(v->ele), str);
+}
+void parse_time(GPXPoint* v, const char* str) {
+      // todo
+}
+
+
+
 
 
 /** FIXME: String operations.
@@ -365,12 +384,14 @@ void start_hdl(void* usrData, const char* el, const char** attr) {
 			xml_push_elem(&(input->stack), xml_new_elem(TAG_TIME)); 			
 			fprintf(stderr," Start of elem %s\n", TAG_TIME);
 		  }
+	    // TODO other elements
+	    
       } else { // stack has no element yet
 	    // accept TAG_TRKPT
 	    if(0 == strcmp(el, TAG_TRKPT)){
 		  fprintf(stderr, "startt_hdl: new trackpt\n");
 		  xml_push_elem(&(input->stack),xml_new_elem(TAG_TRKPT)); 
-		  GEOPoint* v = new_point(input->ptset);
+		  GPXPoint* v = new_point(input->ptset);
 		  if(attr) {
 			for(i = 0; attr[i]; i+=2) {
 			      fprintf(stderr, "attr %s\n", attr[i]);
@@ -379,8 +400,9 @@ void start_hdl(void* usrData, const char* el, const char** attr) {
 				    parse_lon(v, attr[i+1]);
 			      } else if(!strcmp(ATTR_LAT, attr[i])) {
 				    fprintf(stderr, "parsing lat: %s\n", attr[i+1]);
-				    parse_lat(v,attr[i+1]);
+				    parse_lat(v, attr[i+1]);
 			      }
+			      // TODO undocumented attributes...
 			}
 			fprintf(stderr, "parsed %d attributes\n", i/2);
 			dbg_print_point(v);
@@ -390,6 +412,7 @@ void start_hdl(void* usrData, const char* el, const char** attr) {
       fprintf(stderr, "stack depth: %d\n",  xml_stack_depth(&(input->stack)));
 }
 
+/** check if str is in set. */
 int strsetcmp(const char* str, const char* set[]){
       int csel = 0; // character-selecto
       int ssel = 0; // string selector
@@ -432,7 +455,7 @@ void end_hdl(void* usrData, const char* el) {
 
 void char_hdl(void* usrData, const char* txt, int len) {
       // FIXME ele time
-      // TODO txt might be only part of element data, collect in last element of stack
+      // TODO txt might be only part of element data, collect all CDATA in last element of stack, then parse in end_hdl
       xml_stack* stack = (xml_stack*)usrData;
       struct gpx_input* input = (struct gpx_input*)usrData;
       char* str = (char*)malloc((len+1)*sizeof(char));
